@@ -1,0 +1,58 @@
+os: Visual Studio 2015
+
+environment:
+  #Config variables
+  GODOT_REPO: https://github.com/godotengine/godot
+  HOME: "%HOMEDRIVE%%HOMEPATH%"
+  CLONE_ROOT: "%HOME%\\build"
+  PYTHON: C:\Python27
+  SCONS_CACHE_ROOT: "%HOME%\\scons_cache"
+  SCONS_CACHE_LIMIT: 1024
+
+  #Build variables
+  VS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
+  GD_PLATFORM: windows
+  ARCH: amd64
+  matrix:
+    - TOOLS: yes
+      TARGET: release_debug
+
+    - TOOLS: no
+      TARGET: release_debug
+
+    - TOOLS: no
+      TARGET: release
+
+cache:
+  - "%SCONS_CACHE_ROOT%"
+
+init:
+  - cd "%CLONE_ROOT%"
+  - rd /s /q modules # deleting clone_folder - a hack to allow cloning Godot's repo
+  - git clone -q %GODOT_REPO% .
+  - mkdir modules\\houdini_engine # re-adding removed directory
+  - cd modules\\houdini_engine
+
+clone_folder: "%CLONE_ROOT%\\modules\\houdini_engine"
+
+install:
+  - SET "PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - pip install -U wheel  # needed for pip install scons to work, otherwise a flag is missing
+  - pip install scons
+  - call "%VS%" %ARCH% # setting up VC env variables
+
+before_build:
+  - echo "Build nr. %APPVEYOR_BUILD_NUMBER% started with the following parameters"
+  - echo "PLATFORM = %GD_PLATFORM%"
+  - echo "ARCHITECTURE = %ARCH%"
+  - echo "TARGET = %TARGET%"
+  - echo "TOOLS ENABLED = %TOOLS%"
+  - echo .
+  - python --version
+  - scons --version
+  - cl.exe
+  - SET "SCONS_CACHE=%SCONS_CACHE_ROOT%\master"
+  - cd %CLONE_ROOT% #cd to godot's root dir to start a build there
+
+build_script:
+- scons platform=%GD_PLATFORM% target=%TARGET% tools=%TOOLS% debug_symbols=no verbose=yes progress=no gdnative_wrapper=yes
